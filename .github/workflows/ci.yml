@@ -36,8 +36,6 @@ jobs:
           pip install pytest pytest-cov
 
       - name: Run unit tests with coverage
-        env:
-          PYTHONPATH: ${{ github.workspace }}
         run: |
           pytest -q --maxfail=1 --disable-warnings \
                  --cov=calc --cov-report=xml --cov-report=term
@@ -46,3 +44,28 @@ jobs:
         with:
           name: coverage-xml
           path: coverage.xml
+
+      # -------- Notificações Discord --------
+      - name: Notify Discord on success
+        if: success()
+        run: |
+          msg="✅ CI passou no repo ${GITHUB_REPOSITORY} (branch: ${GITHUB_REF_NAME}) — workflow: ${GITHUB_WORKFLOW}\nRun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          payload=$(printf '{"content":"%s"}' "$msg")
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+                   -H "Content-Type: application/json" \
+                   -d "$payload" \
+                   "${{ secrets.DISCORD_WEBHOOK3 }}")
+          echo "Discord HTTP status: $code"
+          test "$code" -ge 200 -a "$code" -lt 300
+
+      - name: Notify Discord on failure
+        if: failure()
+        run: |
+          msg="❌ CI falhou no repo ${GITHUB_REPOSITORY} (branch: ${GITHUB_REF_NAME}) — workflow: ${GITHUB_WORKFLOW}\nRun: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          payload=$(printf '{"content":"%s"}' "$msg")
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+                   -H "Content-Type: application/json" \
+                   -d "$payload" \
+                   "${{ secrets.DISCORD_WEBHOOK3 }}")
+          echo "Discord HTTP status: $code"
+          test "$code" -ge 200 -a "$code" -lt 300
